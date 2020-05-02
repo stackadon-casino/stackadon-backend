@@ -24,6 +24,7 @@ module.exports = io => {
     this.bet = 0
     this.total = 0
     this.order = handInfo.order
+    this.socketId = handInfo.socketId
   }
 
   let players = {}
@@ -36,7 +37,10 @@ module.exports = io => {
     console.log(`We are connected ${socket.id}`)
     //assign player seats on a table
     socket.on('takeSeat', ind => {
-      players[socket.id].hand[ind] = new Hand({ order: ind })
+      players[socket.id].hand[ind] = new Hand({
+        order: ind,
+        socketId: socket.id
+      })
       io.emit('takenSeat', { ind, player: players[socket.id] })
     })
     //adds chips to bet
@@ -52,11 +56,15 @@ module.exports = io => {
       io.emit('addedDeck', deck)
     })
     socket.on('deal', () => {
-      let arr = []
-      for(let x = 0; x<activeHands.size(); x+=1){
-        arr.push(activeHands.elementAt(x))
+      for (let x = 0; x < activeHands.size(); x += 1) {
+        const playerCards = deal(deck)
+        const hand = activeHands.elementAt(x).player.order.toString()
+        players[activeHands.elementAt(x).player.socketId].hand[hand].cards.push(
+          deck[playerCards.deck][playerCards.card]
+        )
       }
-      io.emit('test', arr)
+      const dealerCards = deal(deck)
+      dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
     })
 
     socket.on('disconnect', () => {
