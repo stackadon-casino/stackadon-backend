@@ -59,9 +59,11 @@ module.exports = io => {
       for (let x = 0; x < activeHands.size(); x += 1) {
         const playerCards = deal(deck)
         const hand = activeHands.elementAt(x).player.order.toString()
-        players[activeHands.elementAt(x).player.socketId].hand[hand].cards.push(
-          deck[playerCards.deck][playerCards.card]
-        )
+        let cards = deck[playerCards.deck][playerCards.card]
+        let id = activeHands.elementAt(x).player.socketId
+        players[id].hand[hand].cards.push(cards)
+
+        socket.emit('dealtCards', {player: players[id], order: hand})
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
