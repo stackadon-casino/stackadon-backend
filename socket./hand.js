@@ -7,7 +7,7 @@ function LinkedHand() {
   this.size = function() {
     let currentNode = head
     let count = 0
-    while(currentNode){
+    while (currentNode) {
       currentNode = currentNode.next
       count++
     }
@@ -22,22 +22,24 @@ function LinkedHand() {
       head = player
     } else {
       let currentNode = currentNodeAdd
-      if (!currentNode.next) {
-        if (player.player.order > currentNode.player.order) {
-          currentNode.next = player
+      if (player.player.order !== currentNode.player.order) {
+        if (!currentNode.next) {
+          if (player.player.order > currentNode.player.order) {
+            currentNode.next = player
+          } else {
+            player.next = head
+            head = player
+          }
         } else {
-          player.next = head
-          head = player
-        }
-      } else {
-        if (
-          player.player.order > currentNode.player.order &&
-          player.player.order < currentNode.next.player.order
-        ) {
-          player.next = currentNode.next
-          currentNode.next = player
-        } else {
-          this.add(hand, currentNode.next)
+          if (
+            player.player.order > currentNode.player.order &&
+            player.player.order < currentNode.next.player.order
+          ) {
+            player.next = currentNode.next
+            currentNode.next = player
+          } else {
+            this.add(hand, currentNode.next)
+          }
         }
       }
     }
