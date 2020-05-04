@@ -67,6 +67,7 @@ module.exports = io => {
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+      socket.emit('dealtDealer', dealer)
     })
 
     socket.on('disconnect', () => {
