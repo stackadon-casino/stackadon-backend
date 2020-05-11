@@ -1,28 +1,31 @@
-const express = require('express');
-const router = express.Router();
-const {User} = require('./models/user')
+const express = require('express')
+const router = express.Router()
+const { User } = require('./models/user')
 
 router.get('/', async (req, res, next) => {
   const users = await User.findAll()
 
   console.log(users)
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(__dirname + '/index.html')
 })
 
-router.post('/login', async (req, res, next)=>{
+router.post('/login', async (req, res, next) => {
   try {
-    console.log('connected',req.body)
     const user = await User.findAll({
-      where:{
-        login: 'example',
-        password: '123'
+      where: {
+        login: req.body.login,
+        password: req.body.password
       }
     })
-    // console.log(user)
-    res.send(user)
+    if (user.length > 0) {
+      user[0].dataValues.status = 'loggedIn'
+      res.send(user)
+    } else {
+      res.send(false)
+    }
   } catch (error) {
     next(error)
   }
 })
 
-module.exports = router;
+module.exports = router
