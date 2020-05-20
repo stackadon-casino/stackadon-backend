@@ -66,19 +66,25 @@ module.exports = io => {
         let cards = deck[playerCards.deck][playerCards.card]
         let id = activeHands.elementAt(x).player.socketId
         players[id].hand[hand].cards.push(cards)
-        socket.emit('dealtCards', {player: players[id], order: hand})
+        socket.emit('dealtCards', { player: players[id], order: hand })
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
       socket.emit('dealtDealer', dealer)
     })
-    socket.on('dealTrigger', dealtTrigger =>{
+    socket.on('dealTrigger', dealtTrigger => {
       trigger = dealtTrigger
       socket.emit('dealtTrigger', trigger)
     })
     socket.on('createOrder', () => {
       order = activeHands.elementAt(linkedIndex).player.order
       linkedIndex += 1
+    })
+
+    socket.on('joinRoom', roomNum => {
+      socket.join(`${roomNum}`, () =>{
+        console.log(socket.rooms)
+      })
     })
 
     socket.on('disconnect', () => {
