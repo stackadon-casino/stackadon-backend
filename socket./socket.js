@@ -2,19 +2,6 @@ const { createDeck, deal } = require('./deck')
 const { LinkedHand } = require('./hand')
 
 module.exports = io => {
-  let deck = [createDeck()]
-
-  let dealer = {
-    hand: [],
-    total: 0
-  }
-
-  let linkedIndex = 0
-  let order
-  let trigger
-
-  let activeHands = new LinkedHand()
-
   function Player(userInfo) {
     this.userId = 1
     this.name = 1
@@ -22,7 +9,6 @@ module.exports = io => {
     this.chips = 1000
     this.hand = {}
   }
-
   function Hand(handInfo) {
     this.cards = []
     this.bet = 0
@@ -31,35 +17,53 @@ module.exports = io => {
     this.socketId = handInfo.socketId
   }
 
-  let players = {}
+  function blackjackGame() {
+    this.deck = [createDeck()]
+    this.dealer = {
+      hand: [],
+      total: 0
+    }
+    this.linkedIndex = 0
+    this.order
+    this.trigger
+    this.activeHands = new LinkedHand()
+    this.players = {}
+  }
+  let rooms = {}
 
   io.on('connection', socket => {
-    players[socket.id] = new Player({ socketId: socket.id })
-    if (deck.length === 1) {
-      io.emit('addedDeck', deck)
-    }
     console.log(`We are connected ${socket.id}`)
-    //assign player seats on a table
-    socket.on('takeSeat', ind => {
+    // //assign player seats on a table
+    socket.on('takeSeat', ({ ind, roomNum }) => {
+      let players = rooms[roomNum].players
       players[socket.id].hand[ind] = new Hand({
         order: ind,
         socketId: socket.id
       })
       io.emit('takenSeat', { ind, player: players[socket.id] })
     })
-    //adds chips to bet
+    // //adds chips to bet
     socket.on('bet', amount => {
+      const { roomNum } = amount
+      let players = rooms[roomNum].players
       if (players[socket.id].hand[`${amount.index}`]) {
         players[socket.id].hand[`${amount.index}`].bet += amount.bet
         io.emit('addBet', { ind: amount.index, player: players[socket.id] })
-        activeHands.add(players[socket.id].hand[`${amount.index}`])
+        rooms[roomNum]['activeHands'].add(
+          players[socket.id].hand[`${amount.index}`]
+        )
       }
     })
-    socket.on('addDeck', () => {
+    socket.on('addDeck', roomNum => {
+      let deck = rooms[roomNum]['deck']
       deck.push(createDeck())
       io.emit('addedDeck', deck)
     })
-    socket.on('deal', () => {
+    socket.on('deal', roomNum => {
+      let players = rooms[roomNum].players
+      let activeHands = rooms[roomNum]['activeHands']
+      let deck = rooms[roomNum]['deck']
+      let dealer = rooms[roomNum]['dealer']
       for (let x = 0; x < activeHands.size(); x += 1) {
         const playerCards = deal(deck)
         const hand = activeHands.elementAt(x).player.order.toString()
@@ -70,20 +74,29 @@ module.exports = io => {
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
-      socket.emit('dealtDealer', dealer)
+      socket.to('1').emit('dealtDealer', dealer)
     })
     socket.on('dealTrigger', dealtTrigger => {
-      trigger = dealtTrigger
-      socket.emit('dealtTrigger', trigger)
+      const { roomNum } = dealtTrigger
+      rooms[roomNum]['trigger'] = dealtTrigger
+      socket.to('1').emit('dealtTrigger', rooms[roomNum]['trigger'])
     })
-    socket.on('createOrder', () => {
-      order = activeHands.elementAt(linkedIndex).player.order
+    socket.on('createOrder', roomNum => {
+      let activeHands = rooms[roomNum]['activeHands']
+      let linkedIndex = rooms[roomNum]['linkedIndex']
+      rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
       linkedIndex += 1
     })
 
     socket.on('joinRoom', roomNum => {
-      socket.join(`${roomNum}`, () =>{
-        console.log(socket.rooms)
+      socket.join(`${roomNum}`, () => {
+        if (!rooms[roomNum]) {
+          rooms[roomNum] = new blackjackGame()
+        }
+        rooms[roomNum]['players'][socket.id] = new Player({
+          socketId: socket.id
+        })
+        console.log(rooms[roomNum]['players'])
       })
     })
 
