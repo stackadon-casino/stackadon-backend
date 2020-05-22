@@ -40,15 +40,19 @@ module.exports = io => {
         order: ind,
         socketId: socket.id
       })
-      io.emit('takenSeat', { ind, player: players[socket.id] })
+      io.to(roomNum).emit('takenSeat', { ind, player: players[socket.id] })
     })
+
     // //adds chips to bet
     socket.on('bet', amount => {
       const { roomNum } = amount
       let players = rooms[roomNum].players
       if (players[socket.id].hand[`${amount.index}`]) {
         players[socket.id].hand[`${amount.index}`].bet += amount.bet
-        io.emit('addBet', { ind: amount.index, player: players[socket.id] })
+        io.to(roomNum).emit('addBet', {
+          ind: amount.index,
+          player: players[socket.id]
+        })
         rooms[roomNum]['activeHands'].add(
           players[socket.id].hand[`${amount.index}`]
         )
@@ -57,7 +61,7 @@ module.exports = io => {
     socket.on('addDeck', roomNum => {
       let deck = rooms[roomNum]['deck']
       deck.push(createDeck())
-      io.emit('addedDeck', deck)
+      io.to(roomNum).emit('addedDeck', deck)
     })
     socket.on('deal', roomNum => {
       let players = rooms[roomNum].players
@@ -70,22 +74,22 @@ module.exports = io => {
         let cards = deck[playerCards.deck][playerCards.card]
         let id = activeHands.elementAt(x).player.socketId
         players[id].hand[hand].cards.push(cards)
-        socket.emit('dealtCards', { player: players[id], order: hand })
+        io.to(roomNum).emit('dealtCards', { player: players[id], order: hand })
+        console.log(hand, players[id],'NOT SPEICAL')
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
-      socket.to('1').emit('dealtDealer', dealer)
+      io.to(roomNum).emit('dealtDealer', dealer)
     })
     socket.on('dealTrigger', dealtTrigger => {
       const { roomNum } = dealtTrigger
       rooms[roomNum]['trigger'] = dealtTrigger
-      socket.to('1').emit('dealtTrigger', rooms[roomNum]['trigger'])
+      io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
     })
     socket.on('createOrder', roomNum => {
       let activeHands = rooms[roomNum]['activeHands']
       let linkedIndex = rooms[roomNum]['linkedIndex']
       rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
-      linkedIndex += 1
     })
 
     socket.on('joinRoom', roomNum => {
@@ -96,8 +100,21 @@ module.exports = io => {
         rooms[roomNum]['players'][socket.id] = new Player({
           socketId: socket.id
         })
-        console.log(rooms[roomNum]['players'])
       })
+    })
+
+    socket.on('hit', ({ roomNum, socketId }) => {
+      // console.log(roomNum)
+      let players = rooms[roomNum].players
+      // console.log(players)
+      if (players[socketId]['hand'][rooms[roomNum]['order']]) {
+        let deck = rooms[roomNum]['deck']
+        const playerCards = deal(deck)
+        let cards = deck[playerCards.deck][playerCards.card]
+        players[socketId]['hand'][rooms[roomNum]['order']]['cards'].push(cards)
+        io.to(roomNum).emit('dealtCards', { player: players[socketId], order: rooms[roomNum]['order']})
+      }
+      console.log(players[socketId],rooms[roomNum]['order'], 'SPEICAL' )
     })
 
     socket.on('disconnect', () => {
