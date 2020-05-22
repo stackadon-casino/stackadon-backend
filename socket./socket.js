@@ -114,7 +114,6 @@ module.exports = io => {
         players[socketId]['hand'][rooms[roomNum]['order']]['cards'].push(cards)
         io.to(roomNum).emit('dealtCards', { player: players[socketId], order: rooms[roomNum]['order']})
       }
-      console.log(players[socketId],rooms[roomNum]['order'], 'SPEICAL' )
     })
 
     socket.on('disconnect', () => {
