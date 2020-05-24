@@ -74,6 +74,7 @@ module.exports = io => {
         let cards = deck[playerCards.deck][playerCards.card]
         let id = activeHands.elementAt(x).player.socketId
         players[id].hand[hand].cards.push(cards)
+        players[id].hand[hand].total += cards.value
         io.to(roomNum).emit('dealtCards', { player: players[id], order: hand })
       }
       const dealerCards = deal(deck)
@@ -82,14 +83,14 @@ module.exports = io => {
     })
     socket.on('dealTrigger', dealtTrigger => {
       const { roomNum } = dealtTrigger
-      rooms[roomNum]['trigger'] = dealtTrigger
+      rooms[roomNum]['trigger'] = dealtTrigger.trigger
       io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
     })
     socket.on('createOrder', roomNum => {
       let activeHands = rooms[roomNum]['activeHands']
       let linkedIndex = rooms[roomNum]['linkedIndex']
       rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
-      rooms[roomNum]['linkedIndex']+=1
+      rooms[roomNum]['linkedIndex'] += 1
     })
 
     socket.on('joinRoom', roomNum => {
@@ -110,15 +111,28 @@ module.exports = io => {
         const playerCards = deal(deck)
         let cards = deck[playerCards.deck][playerCards.card]
         players[socketId]['hand'][rooms[roomNum]['order']]['cards'].push(cards)
-        io.to(roomNum).emit('dealtCards', { player: players[socketId], order: rooms[roomNum]['order']})
+        players[socketId]['hand'][rooms[roomNum]['order']]['total'] +=
+          cards.value
+        io.to(roomNum).emit('dealtCards', {
+          player: players[socketId],
+          order: rooms[roomNum]['order']
+        })
+        if (players[socketId]['hand'][rooms[roomNum]['order']]['total'] >= 21) {
+          let activeHands = rooms[roomNum]['activeHands']
+          let linkedIndex = rooms[roomNum]['linkedIndex']
+          rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
+          rooms[roomNum]['linkedIndex'] += 1
+        }
       }
     })
 
-    socket.on('stand', ({roomNum, socketId})=>{
+    socket.on('stand', ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
-        io.emit('standing',roomNum)
-        console.log('jitt')
+        let activeHands = rooms[roomNum]['activeHands']
+        let linkedIndex = rooms[roomNum]['linkedIndex']
+        rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
+        rooms[roomNum]['linkedIndex'] += 1
       }
     })
 
