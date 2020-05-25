@@ -1,5 +1,6 @@
 const { createDeck, deal } = require('./deck')
 const { LinkedHand } = require('./hand')
+const axios = require('axios').default
 
 module.exports = io => {
   function Player(userInfo) {
@@ -105,10 +106,11 @@ module.exports = io => {
       })
     })
 
-    socket.on('hit', ({ roomNum, socketId }) => {
+    socket.on('hit', async ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
       let activeHands = rooms[roomNum]['activeHands']
       let linkedIndex = rooms[roomNum]['linkedIndex']
+      let dealer = rooms[roomNum]['dealer']
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
         let deck = rooms[roomNum]['deck']
         const playerCards = deal(deck)
@@ -122,33 +124,83 @@ module.exports = io => {
         })
         if (players[socketId]['hand'][rooms[roomNum]['order']]['total'] >= 21) {
           if (linkedIndex < activeHands.size()) {
-
-          rooms[roomNum]['order'] = activeHands.elementAt(
-            linkedIndex
-          ).player.order
-          rooms[roomNum]['linkedIndex'] += 1
+            rooms[roomNum]['order'] = activeHands.elementAt(
+              linkedIndex
+            ).player.order
+            rooms[roomNum]['linkedIndex'] += 1
           }
           if (linkedIndex === activeHands.size()) {
-            while(dealer.total<17){
+            while (dealer.total < 17) {
               const dealerCards = deal(deck)
               dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
               dealer.total += deck[dealerCards.deck][dealerCards.card].value
               io.to(roomNum).emit('dealtDealer', dealer)
             }
-            console.log('WIN LOGIC')
+            let allPlayerSockets = Object.keys(players)
+            for (let x = 0; x < allPlayerSockets.length; x += 1) {
+              let allPlayerHands = Object.keys(
+                players[allPlayerSockets[x]]['hand']
+              )
+              for (let y = 0; y < allPlayerHands.length; y += 1) {
+                let myTotal =
+                  players[allPlayerSockets[x]]['hand'][allPlayerHands[y]][
+                    'total'
+                  ]
+                //did not bust
+                if (myTotal <= 21) {
+                  let betSize =
+                    players[allPlayerSockets[x]]['hand'][allPlayerHands[y]][
+                      'bet'
+                    ]
+                  let playerId = players[socket.id]['userId']
+                  //dealer busts and player did not bust
+                  //player wins
+                  if (dealer.total > 21 || myTotal > dealer.total) {
+                    try {
+                      await axios.put('http://localhost:7070/win', {
+                        userId: playerId,
+                        amount: betSize
+                      })
+                    } catch (error) {
+                      console.log(error)
+                    }
+                  }
+                  //player lose
+                  if (myTotal < dealer.total) {
+                    try {
+                      await axios.put('http://localhost:7070/win', {
+                        userId: playerId,
+                        amount: -betSize
+                      })
+                    } catch (error) {
+                      console.log(error)
+                    }
+                  }
+                }
+                //player bust
+                else {
+                  try {
+                    await axios.put('http://localhost:7070/win', {
+                      userId: playerId,
+                      amount: -betSize
+                    })
+                  } catch (error) {
+                    console.log(error)
+                  }
+                }
+              }
+            }
           }
         }
       }
     })
 
-    socket.on('stand', ({ roomNum, socketId }) => {
+    socket.on('stand', async ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
       let linkedIndex = rooms[roomNum]['linkedIndex']
       let activeHands = rooms[roomNum]['activeHands']
       let dealer = rooms[roomNum]['dealer']
       let deck = rooms[roomNum]['deck']
-      console.log(linkedIndex, 'linkedIDEX')
-      console.log(activeHands.size(), 'SADA')
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
         if (linkedIndex < activeHands.size()) {
           rooms[roomNum]['order'] = activeHands.elementAt(
@@ -157,16 +209,63 @@ module.exports = io => {
           rooms[roomNum]['linkedIndex'] += 1
         }
         if (linkedIndex === activeHands.size()) {
-          while(dealer.total<17){
+          while (dealer.total < 17) {
             const dealerCards = deal(deck)
             dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
             dealer.total += deck[dealerCards.deck][dealerCards.card].value
             io.to(roomNum).emit('dealtDealer', dealer)
           }
-          // for(let x = 0; x<activeHands.size(); x+=1){
-
-          // }
-          console.log('WIN LOGIC')
+          let allPlayerSockets = Object.keys(players)
+          for (let x = 0; x < allPlayerSockets.length; x += 1) {
+            let allPlayerHands = Object.keys(
+              players[allPlayerSockets[x]]['hand']
+            )
+            for (let y = 0; y < allPlayerHands.length; y += 1) {
+              let myTotal =
+                players[allPlayerSockets[x]]['hand'][allPlayerHands[y]]['total']
+              //did not bust
+              if (myTotal <= 21) {
+                let betSize =
+                  players[allPlayerSockets[x]]['hand'][allPlayerHands[y]]['bet']
+                let playerId = players[socket.id]['userId']
+                //dealer busts and player did not bust
+                //player wins
+                if (dealer.total > 21 || myTotal > dealer.total) {
+                  try {
+                    await axios.put('http://localhost:7070/win', {
+                      userId: playerId,
+                      amount: betSize
+                    })
+                  } catch (error) {
+                    console.log(error)
+                  }
+                }
+                //player lose
+                if (myTotal < dealer.total) {
+                  try {
+                    await axios.put('http://localhost:7070/win', {
+                      userId: playerId,
+                      amount: -betSize
+                    })
+                  } catch (error) {
+                    console.log(error)
+                  }
+                }
+              }
+              //player bust
+              else {
+                try {
+                  await axios.put('http://localhost:7070/win', {
+                    userId: playerId,
+                    amount: -betSize
+                  })
+                } catch (error) {
+                  console.log(error)
+                }
+              }
+            }
+          }
+          //
         }
       }
     })

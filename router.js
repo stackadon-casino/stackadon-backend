@@ -28,4 +28,14 @@ router.post('/login', async (req, res, next) => {
   }
 })
 
+router.put('/win', async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.body.userId)
+    user.chips += req.body.amount
+    res.send(user)
+  } catch (error) {
+    next(error)
+  }
+})
+
 module.exports = router
