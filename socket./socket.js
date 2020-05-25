@@ -79,6 +79,7 @@ module.exports = io => {
       }
       const dealerCards = deal(deck)
       dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+      dealer.total += deck[dealerCards.deck][dealerCards.card].value
       io.to(roomNum).emit('dealtDealer', dealer)
     })
     socket.on('dealTrigger', dealtTrigger => {
@@ -106,6 +107,8 @@ module.exports = io => {
 
     socket.on('hit', ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
+      let activeHands = rooms[roomNum]['activeHands']
+      let linkedIndex = rooms[roomNum]['linkedIndex']
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
         let deck = rooms[roomNum]['deck']
         const playerCards = deal(deck)
@@ -118,21 +121,53 @@ module.exports = io => {
           order: rooms[roomNum]['order']
         })
         if (players[socketId]['hand'][rooms[roomNum]['order']]['total'] >= 21) {
-          let activeHands = rooms[roomNum]['activeHands']
-          let linkedIndex = rooms[roomNum]['linkedIndex']
-          rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
+          if (linkedIndex < activeHands.size()) {
+
+          rooms[roomNum]['order'] = activeHands.elementAt(
+            linkedIndex
+          ).player.order
           rooms[roomNum]['linkedIndex'] += 1
+          }
+          if (linkedIndex === activeHands.size()) {
+            while(dealer.total<17){
+              const dealerCards = deal(deck)
+              dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+              dealer.total += deck[dealerCards.deck][dealerCards.card].value
+              io.to(roomNum).emit('dealtDealer', dealer)
+            }
+            console.log('WIN LOGIC')
+          }
         }
       }
     })
 
     socket.on('stand', ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
+      let linkedIndex = rooms[roomNum]['linkedIndex']
+      let activeHands = rooms[roomNum]['activeHands']
+      let dealer = rooms[roomNum]['dealer']
+      let deck = rooms[roomNum]['deck']
+      console.log(linkedIndex, 'linkedIDEX')
+      console.log(activeHands.size(), 'SADA')
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
-        let activeHands = rooms[roomNum]['activeHands']
-        let linkedIndex = rooms[roomNum]['linkedIndex']
-        rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
-        rooms[roomNum]['linkedIndex'] += 1
+        if (linkedIndex < activeHands.size()) {
+          rooms[roomNum]['order'] = activeHands.elementAt(
+            linkedIndex
+          ).player.order
+          rooms[roomNum]['linkedIndex'] += 1
+        }
+        if (linkedIndex === activeHands.size()) {
+          while(dealer.total<17){
+            const dealerCards = deal(deck)
+            dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+            dealer.total += deck[dealerCards.deck][dealerCards.card].value
+            io.to(roomNum).emit('dealtDealer', dealer)
+          }
+          // for(let x = 0; x<activeHands.size(); x+=1){
+
+          // }
+          console.log('WIN LOGIC')
+        }
       }
     })
 
