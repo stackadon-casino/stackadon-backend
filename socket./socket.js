@@ -121,11 +121,12 @@ module.exports = io => {
       if (players[socketId]['hand'][rooms[roomNum]['order']]) {
         let deck = rooms[roomNum]['deck']
         const playerCards = deal(deck)
+        if (linkedIndex <= activeHands.size()) {
         let cards = deck[playerCards.deck][playerCards.card]
         players[socketId]['hand'][rooms[roomNum]['order']]['cards'].push(cards)
         players[socketId]['hand'][rooms[roomNum]['order']]['total'] +=
           cards.value
-
+        }
         io.to(roomNum).emit('dealtCards', {
           player: players[socketId],
           order: rooms[roomNum]['order']
@@ -197,7 +198,10 @@ module.exports = io => {
                 }
               }
             }
+            rooms[roomNum]['linkedIndex'] += 2
           }
+          //
+
         }
       }
     })
@@ -270,18 +274,10 @@ module.exports = io => {
                   console.log(error)
                 }
               }
-              players[allPlayerSockets[x]]['hand'][
-                allPlayerHands[y]
-              ] = new Hand({
-                order:
-                  players[allPlayerSockets[x]]['hand'][allPlayerHands[y]][
-                    'order'
-                  ],
-                socketId: allPlayerSockets[x]
-              })
             }
           }
           //
+          rooms[roomNum]['linkedIndex'] += 2
         }
       }
     })
