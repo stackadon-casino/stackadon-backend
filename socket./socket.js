@@ -276,7 +276,6 @@ module.exports = io => {
               }
             }
           }
-          //
           rooms[roomNum]['linkedIndex'] += 2
         }
       }
