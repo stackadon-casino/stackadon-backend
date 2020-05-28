@@ -20,6 +20,12 @@ function createDeck() {
       } else if (card.id === 13) {
         card.id = 'K'
       }
+      if(card.suit === 'diamond'|| card.suit === 'heart'){
+        card.color = 'red';
+      }
+      else{
+        card.color = 'black'
+      }
 
       deck.push(card)
     }
