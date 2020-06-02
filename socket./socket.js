@@ -365,7 +365,7 @@ module.exports = io => {
         dealer: rooms[roomNum]['dealer'],
         table: table
       }
-      io.emit('updateUser', currentGame)
+      io.to(roomNum).emit('updateUser', currentGame)
     })
 
     socket.on('disconnect', () => {
