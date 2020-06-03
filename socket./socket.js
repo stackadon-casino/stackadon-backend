@@ -63,7 +63,6 @@ module.exports = io => {
           )
         }
       }
-      console.log(players[socket.id])
     })
 
     socket.on('addDeck', roomNum => {
@@ -77,27 +76,29 @@ module.exports = io => {
       let activeHands = rooms[roomNum]['activeHands']
       let deck = rooms[roomNum]['deck']
       let dealer = rooms[roomNum]['dealer']
+      let hasHands = Object.keys(rooms[roomNum]['players'][socket.id]['hand']).length
+      if ( hasHands >0) {
+        if (activeHands.elementAt(0)) {
+          rooms[roomNum]['active'] = true
+          for (let x = 0; x < activeHands.size(); x += 1) {
+            const playerCards = deal(deck)
+            const hand = activeHands.elementAt(x).player.order.toString()
+            let cards = deck[playerCards.deck][playerCards.card]
+            let id = activeHands.elementAt(x).player.socketId
+            players[id].hand[hand].cards.push(cards)
+            players[id].hand[hand].total += cards.value
+            io.to(roomNum).emit('dealtCards', {
+              player: players[id],
+              order: hand
+            })
+          }
 
-      if (activeHands.elementAt(0)) {
-        rooms[roomNum]['active'] = true
-        for (let x = 0; x < activeHands.size(); x += 1) {
-          const playerCards = deal(deck)
-          const hand = activeHands.elementAt(x).player.order.toString()
-          let cards = deck[playerCards.deck][playerCards.card]
-          let id = activeHands.elementAt(x).player.socketId
-          players[id].hand[hand].cards.push(cards)
-          players[id].hand[hand].total += cards.value
-          io.to(roomNum).emit('dealtCards', {
-            player: players[id],
-            order: hand
-          })
+          const dealerCards = deal(deck)
+          dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+          dealer.total += deck[dealerCards.deck][dealerCards.card].value
+
+          io.to(roomNum).emit('dealtDealer', dealer)
         }
-
-        const dealerCards = deal(deck)
-        dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
-        dealer.total += deck[dealerCards.deck][dealerCards.card].value
-
-        io.to(roomNum).emit('dealtDealer', dealer)
       }
     })
 
@@ -139,7 +140,6 @@ module.exports = io => {
       let linkedIndex = rooms[roomNum]['linkedIndex']
       let dealer = rooms[roomNum]['dealer']
       let active = rooms[roomNum]['active']
-      console.log(linkedIndex, activeHands.size())
       if (active) {
         if (players[socketId]['hand'][rooms[roomNum]['order']]) {
           let deck = rooms[roomNum]['deck']
@@ -352,26 +352,31 @@ module.exports = io => {
         io.to(roomNum).emit('dealtDealer', dealer)
         io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
       }
-      //
     })
 
     socket.on('lateJoin', roomNum => {
       let table = []
-      let activeHands = rooms[roomNum]['activeHands']
+      // let activeHands = rooms[roomNum]['activeHands']
       for (let x = 0; x < 7; x += 1) {
         table[x] = { taken: false }
       }
-      for (let x = 0; x < activeHands.size(); x += 1) {
-        console.log(
-          rooms[roomNum]['players'][activeHands.elementAt(x).player.socketId]
+      //all sockets
+      let allPlayers = Object.keys(rooms[roomNum]['players'])
+      for (let x = 0; x < allPlayers.length; x += 1) {
+        let activeHands = Object.keys(
+          rooms[roomNum]['players'][allPlayers[x]]['hand']
         )
-        table[activeHands.elementAt(x).player.order] = {
-          taken: true,
-          player:
-            rooms[roomNum]['players'][activeHands.elementAt(x).player.socketId]
+        for (let y = 0; y < activeHands.length; y += 1) {
+          table[
+            rooms[roomNum]['players'][allPlayers[x]]['hand'][activeHands[y]][
+              'order'
+            ]
+          ] = {
+            taken: true,
+            player: rooms[roomNum]['players'][allPlayers[x]]
+          }
         }
       }
-
       let currentGame = {
         trigger: rooms[roomNum]['trigger'],
         dealer: rooms[roomNum]['dealer'],
