@@ -77,36 +77,48 @@ module.exports = io => {
       let activeHands = rooms[roomNum]['activeHands']
       let deck = rooms[roomNum]['deck']
       let dealer = rooms[roomNum]['dealer']
-      rooms[roomNum]['active'] = true
 
-      for (let x = 0; x < activeHands.size(); x += 1) {
-        const playerCards = deal(deck)
-        const hand = activeHands.elementAt(x).player.order.toString()
-        let cards = deck[playerCards.deck][playerCards.card]
-        let id = activeHands.elementAt(x).player.socketId
-        players[id].hand[hand].cards.push(cards)
-        players[id].hand[hand].total += cards.value
-        io.to(roomNum).emit('dealtCards', { player: players[id], order: hand })
+      if (activeHands.elementAt(0)) {
+        rooms[roomNum]['active'] = true
+        for (let x = 0; x < activeHands.size(); x += 1) {
+          const playerCards = deal(deck)
+          const hand = activeHands.elementAt(x).player.order.toString()
+          let cards = deck[playerCards.deck][playerCards.card]
+          let id = activeHands.elementAt(x).player.socketId
+          players[id].hand[hand].cards.push(cards)
+          players[id].hand[hand].total += cards.value
+          io.to(roomNum).emit('dealtCards', {
+            player: players[id],
+            order: hand
+          })
+        }
+
+        const dealerCards = deal(deck)
+        dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
+        dealer.total += deck[dealerCards.deck][dealerCards.card].value
+
+        io.to(roomNum).emit('dealtDealer', dealer)
       }
-
-      const dealerCards = deal(deck)
-      dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
-      dealer.total += deck[dealerCards.deck][dealerCards.card].value
-
-      io.to(roomNum).emit('dealtDealer', dealer)
     })
 
     socket.on('dealTrigger', dealtTrigger => {
       const { roomNum } = dealtTrigger
-      rooms[roomNum]['trigger'] = dealtTrigger.trigger
-      io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
+      let activeHands = rooms[roomNum]['activeHands']
+      if (activeHands.elementAt(0)) {
+        rooms[roomNum]['trigger'] = dealtTrigger.trigger
+        io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
+      }
     })
 
     socket.on('createOrder', roomNum => {
       let activeHands = rooms[roomNum]['activeHands']
       let linkedIndex = rooms[roomNum]['linkedIndex']
-      rooms[roomNum]['order'] = activeHands.elementAt(linkedIndex).player.order
-      rooms[roomNum]['linkedIndex'] += 1
+      if (activeHands.elementAt(0)) {
+        rooms[roomNum]['order'] = activeHands.elementAt(
+          linkedIndex
+        ).player.order
+        rooms[roomNum]['linkedIndex'] += 1
+      }
     })
 
     socket.on('joinRoom', ({ roomNum, firstName }) => {
@@ -308,9 +320,9 @@ module.exports = io => {
       let dealer = rooms[roomNum]['dealer']
       let linkedIndex = rooms[roomNum]['linkedIndex']
       let activeHands = rooms[roomNum]['activeHands']
-      console.log(linkedIndex, activeHands.size())
-      rooms[roomNum]['active'] = false
+
       if (linkedIndex === activeHands.size() + 2) {
+        rooms[roomNum]['active'] = false
         let allPlayerSockets = Object.keys(players)
         for (let x = 0; x < allPlayerSockets.length; x += 1) {
           let allPlayerHands = Object.keys(players[allPlayerSockets[x]]['hand'])
