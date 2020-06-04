@@ -9,6 +9,15 @@ router.get('/', async (req, res, next) => {
   res.sendFile(__dirname + '/index.html')
 })
 
+router.post('/user/chips', async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.body.id)
+    res.send(user)
+  } catch (error) {
+    next(error)
+  }
+})
+
 router.post('/login', async (req, res, next) => {
   try {
     const user = await User.findAll({
@@ -31,8 +40,11 @@ router.post('/login', async (req, res, next) => {
 router.put('/win', async (req, res, next) => {
   try {
     const user = await User.findByPk(req.body.userId)
-    user.chips += req.body.amount
-    res.send(user)
+    const newUser = await User.update(
+      { chips: user.chips + req.body.amount },
+      { where: { id: req.body.userId } }
+    )
+    res.send(newUser)
   } catch (error) {
     next(error)
   }

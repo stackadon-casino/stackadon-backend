@@ -4,7 +4,7 @@ const axios = require('axios').default
 
 module.exports = io => {
   function Player(userInfo) {
-    this.userId = 1
+    this.userId = userInfo.id
     this.name = userInfo.firstName
     this.socketId = userInfo.socketId
     this.hand = {}
@@ -122,14 +122,15 @@ module.exports = io => {
       }
     })
 
-    socket.on('joinRoom', ({ roomNum, firstName }) => {
+    socket.on('joinRoom', ({ roomNum, firstName, id }) => {
       socket.join(`${roomNum}`, () => {
         if (!rooms[roomNum]) {
           rooms[roomNum] = new blackjackGame()
         }
         rooms[roomNum]['players'][socket.id] = new Player({
           socketId: socket.id,
-          firstName
+          firstName,
+          id
         })
       })
     })
@@ -351,6 +352,7 @@ module.exports = io => {
 
         io.to(roomNum).emit('dealtDealer', dealer)
         io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
+        io.to(roomNum).emit('updateChips')
       }
     })
 
