@@ -24,7 +24,7 @@ module.exports = io => {
       total: 0
     }
     this.linkedIndex = 0
-    this.order
+    this.order = 0
     this.trigger = false
     this.activeHands = new LinkedHand()
     this.players = {}
@@ -76,8 +76,9 @@ module.exports = io => {
       let activeHands = rooms[roomNum]['activeHands']
       let deck = rooms[roomNum]['deck']
       let dealer = rooms[roomNum]['dealer']
-      let hasHands = Object.keys(rooms[roomNum]['players'][socket.id]['hand']).length
-      if ( hasHands >0) {
+      let hasHands = Object.keys(rooms[roomNum]['players'][socket.id]['hand'])
+        .length
+      if (hasHands > 0) {
         if (activeHands.elementAt(0)) {
           rooms[roomNum]['active'] = true
           for (let x = 0; x < activeHands.size(); x += 1) {
@@ -119,6 +120,7 @@ module.exports = io => {
           linkedIndex
         ).player.order
         rooms[roomNum]['linkedIndex'] += 1
+        io.to(roomNum).emit('index', rooms[roomNum].order)
       }
     })
 
@@ -230,6 +232,7 @@ module.exports = io => {
               }
               rooms[roomNum]['linkedIndex'] += 2
             }
+            io.to(roomNum).emit('index', rooms[roomNum].order)
             //
           }
         }
@@ -310,8 +313,10 @@ module.exports = io => {
                 }
               }
             }
+
             rooms[roomNum]['linkedIndex'] += 2
           }
+          io.to(roomNum).emit('index', rooms[roomNum].order)
         }
       }
     })
@@ -353,6 +358,7 @@ module.exports = io => {
         io.to(roomNum).emit('dealtDealer', dealer)
         io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
         io.to(roomNum).emit('updateChips')
+        io.to(roomNum).emit('index', 0)
       }
     })
 
@@ -385,6 +391,7 @@ module.exports = io => {
         table: table
       }
       io.to(roomNum).emit('updateUser', currentGame)
+      io.to(roomNum).emit('index', rooms[roomNum].order)
     })
 
     socket.on('disconnect', () => {
