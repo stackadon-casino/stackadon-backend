@@ -9,6 +9,21 @@ router.get('/', async (req, res, next) => {
   res.sendFile(__dirname + '/index.html')
 })
 
+router.post('/user/signup', async (req, res, next) =>{
+  try {
+    const {firstName, lastName, password, login} = req.body
+    const newUser = await User.create({
+      firstName,
+      lastName,
+      password,
+      login
+    })
+    res.send(newUser)
+  } catch (error) {
+
+  }
+})
+
 router.post('/user/chips', async (req, res, next) => {
   try {
     const user = await User.findByPk(req.body.id)

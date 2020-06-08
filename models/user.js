@@ -23,7 +23,8 @@ const User = sequelize.define(
     },
     chips: {
       type: Sequelize.INTEGER,
-      allowNull: false
+      allowNull: false,
+      defaultValue: 0
     }
   },
   {
