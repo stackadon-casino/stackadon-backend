@@ -3,6 +3,18 @@ const { LinkedHand } = require('./hand')
 const axios = require('axios').default
 
 module.exports = io => {
+  let timer
+
+  function startTime(roomNum, socketId) {
+    timer = setTimeout(function() {
+      io.to(socketId).emit('timedOut', roomNum)
+    }, 10000)
+  }
+
+  function endTime() {
+    clearTimeout(timer)
+  }
+
   function Player(userInfo) {
     this.userId = userInfo.id
     this.name = userInfo.firstName
@@ -18,7 +30,7 @@ module.exports = io => {
   }
 
   function blackjackGame() {
-    this.deck = [createDeck()]
+    this.deck = [createDeck(), createDeck(), createDeck(), createDeck()]
     this.dealer = {
       hand: [],
       total: 0
@@ -29,6 +41,7 @@ module.exports = io => {
     this.activeHands = new LinkedHand()
     this.players = {}
     this.active = false
+    this.autoKick = []
   }
   let rooms = {}
 
@@ -92,12 +105,14 @@ module.exports = io => {
               player: players[id],
               order: hand
             })
+            rooms[roomNum].deck[playerCards.deck].splice(playerCards.card, 1)
           }
 
           const dealerCards = deal(deck)
           dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
           dealer.total += deck[dealerCards.deck][dealerCards.card].value
 
+          io.to(roomNum).emit('addedDeck', deck)
           io.to(roomNum).emit('dealtDealer', dealer)
         }
       }
@@ -112,7 +127,7 @@ module.exports = io => {
       }
     })
 
-    socket.on('createOrder', roomNum => {
+    socket.on('createOrder', ({ roomNum, socketId }) => {
       let activeHands = rooms[roomNum]['activeHands']
       let linkedIndex = rooms[roomNum]['linkedIndex']
       if (activeHands.elementAt(0)) {
@@ -121,6 +136,7 @@ module.exports = io => {
         ).player.order
         rooms[roomNum]['linkedIndex'] += 1
         io.to(roomNum).emit('index', rooms[roomNum].order)
+        startTime(roomNum, socketId)
       }
     })
 
@@ -154,7 +170,9 @@ module.exports = io => {
             )
             players[socketId]['hand'][rooms[roomNum]['order']]['total'] +=
               cards.value
+            rooms[roomNum].deck[playerCards.deck].splice(playerCards.card, 1)
           }
+          io.to(roomNum).emit('addedDeck', deck)
           io.to(roomNum).emit('dealtCards', {
             player: players[socketId],
             order: rooms[roomNum]['order']
@@ -239,13 +257,21 @@ module.exports = io => {
       }
     })
 
-    socket.on('stand', async ({ roomNum, socketId }) => {
+    socket.on('stand', async ({ roomNum, socketId = undefined, autoStand }) => {
       let players = rooms[roomNum].players
       let linkedIndex = rooms[roomNum]['linkedIndex']
       let activeHands = rooms[roomNum]['activeHands']
       let dealer = rooms[roomNum]['dealer']
       let deck = rooms[roomNum]['deck']
       let active = rooms[roomNum]['active']
+      if (autoStand && linkedIndex <= activeHands.size()) {
+        socketId = activeHands.elementAt(linkedIndex - 1).player.socketId
+        rooms[roomNum]['autoKick'].push({
+          index: rooms[roomNum]['order'],
+          roomNum,
+          socketId
+        })
+      }
       if (active) {
         if (players[socketId]['hand'][rooms[roomNum]['order']]) {
           if (linkedIndex < activeHands.size()) {
@@ -253,8 +279,11 @@ module.exports = io => {
               linkedIndex
             ).player.order
             rooms[roomNum]['linkedIndex'] += 1
+            endTime()
+            startTime(roomNum, socketId)
           }
           if (linkedIndex === activeHands.size()) {
+            endTime()
             while (dealer.total < 17) {
               const dealerCards = deal(deck)
               dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
@@ -313,7 +342,6 @@ module.exports = io => {
                 }
               }
             }
-
             rooms[roomNum]['linkedIndex'] += 2
           }
           io.to(roomNum).emit('index', rooms[roomNum].order)
@@ -321,7 +349,7 @@ module.exports = io => {
       }
     })
 
-    socket.on('reset', ({ roomNum }) => {
+    socket.on('reset', ({ roomNum, socketId }) => {
       let players = rooms[roomNum].players
       let dealer = rooms[roomNum]['dealer']
       let linkedIndex = rooms[roomNum]['linkedIndex']
@@ -348,13 +376,14 @@ module.exports = io => {
           }
         }
 
+        io.to(socketId).emit('autoRemove', rooms[roomNum]['autoKick'])
         dealer.total = 0
         dealer.hand = []
         rooms[roomNum]['linkedIndex'] = 0
         rooms[roomNum]['order'] = undefined
         rooms[roomNum]['activeHands'] = new LinkedHand()
         rooms[roomNum]['trigger'] = false
-
+        rooms[roomNum]['autoKick'] = []
         io.to(roomNum).emit('dealtDealer', dealer)
         io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
         io.to(roomNum).emit('updateChips')
@@ -392,6 +421,18 @@ module.exports = io => {
       }
       io.to(roomNum).emit('updateUser', currentGame)
       io.to(roomNum).emit('index', rooms[roomNum].order)
+    })
+
+    socket.on('clearSeat', ({ index, roomNum, socketId }) => {
+      let activeHands = rooms[roomNum]['activeHands']
+      let players = rooms[roomNum].players
+      console.log(index, roomNum, socketId, 'THREE THINGS')
+      if (players[socketId]['hand'][index]['cards'].length > 0) {
+        activeHands.removeAtIndex(index)
+      }
+      delete players[socketId]['hand'][index]
+      console.log(rooms[roomNum].players)
+      io.to(roomNum).emit('removedPlayer', index)
     })
 
     socket.on('disconnect', () => {

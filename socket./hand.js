@@ -53,6 +53,21 @@ function LinkedHand() {
     }
     return currentNode
   }
+
+  this.removeAtIndex = function(index) {
+    let currentNode = head;
+    let previousNode;
+    if(currentNode.player.order === index){
+      head = currentNode.next;
+    }
+    else{
+      while(currentNode.player.order !== index){
+        previousNode = currentNode;
+        currentNode = currentNode.next;
+      }
+      previousNode.next = currentNode.next;
+    }
+  }
 }
 
 module.exports = { LinkedHand }
