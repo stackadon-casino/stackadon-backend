@@ -25,6 +25,10 @@ const User = sequelize.define(
       type: Sequelize.INTEGER,
       allowNull: false,
       defaultValue: 0
+    },
+    status: {
+      type: Sequelize.BOOLEAN,
+      defaultValue: false
     }
   },
   {

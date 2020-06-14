@@ -9,9 +9,9 @@ router.get('/', async (req, res, next) => {
   res.sendFile(__dirname + '/index.html')
 })
 
-router.post('/user/signup', async (req, res, next) =>{
+router.post('/user/signup', async (req, res, next) => {
   try {
-    const {firstName, lastName, password, login} = req.body
+    const { firstName, lastName, password, login } = req.body
     const newUser = await User.create({
       firstName,
       lastName,
@@ -19,15 +19,17 @@ router.post('/user/signup', async (req, res, next) =>{
       login
     })
     res.send(newUser)
-  } catch (error) {
-
-  }
+  } catch (error) {}
 })
 
 router.post('/user/chips', async (req, res, next) => {
   try {
     const user = await User.findByPk(req.body.id)
-    res.send(user)
+    if (user) {
+      res.send(user)
+    } else {
+      res.send(false)
+    }
   } catch (error) {
     next(error)
   }
@@ -41,8 +43,12 @@ router.post('/login', async (req, res, next) => {
         password: req.body.password
       }
     })
+
     if (user.length > 0) {
-      user[0].dataValues.status = 'loggedIn'
+      await User.update(
+        { status: true },
+        { where: { id: user[0].dataValues.id } }
+      )
       res.send(user)
     } else {
       res.send(false)
