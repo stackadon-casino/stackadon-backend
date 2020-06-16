@@ -5,6 +5,8 @@ const axios = require('axios').default
 module.exports = io => {
   let timer
 
+  let countDownTimer
+
   function startTime(roomNum, socketId) {
     timer = setTimeout(function() {
       io.to(socketId).emit('timedOut', roomNum)
@@ -13,6 +15,17 @@ module.exports = io => {
 
   function endTime() {
     clearTimeout(timer)
+  }
+
+  function countDownTimerStart(roomNum) {
+    countDownTimer = setInterval(function() {
+      io.to(roomNum).emit('startTimer', rooms[roomNum]['timer'])
+      rooms[roomNum]['timer'] = rooms[roomNum]['timer'] - 1
+    }, 1000)
+  }
+
+  function countDownTimerStop() {
+    clearTimeout(countDownTimer)
   }
 
   function Player(userInfo) {
@@ -42,6 +55,7 @@ module.exports = io => {
     this.players = {}
     this.active = false
     this.autoKick = []
+    this.timer = 10
   }
   let rooms = {}
 
@@ -137,6 +151,7 @@ module.exports = io => {
         rooms[roomNum]['linkedIndex'] += 1
         io.to(roomNum).emit('index', rooms[roomNum].order)
         startTime(roomNum, socketId)
+        countDownTimerStart(roomNum)
       }
     })
 
@@ -181,77 +196,7 @@ module.exports = io => {
           if (
             players[socketId]['hand'][rooms[roomNum]['order']]['total'] >= 21
           ) {
-            if (linkedIndex < activeHands.size()) {
-              rooms[roomNum]['order'] = activeHands.elementAt(
-                linkedIndex
-              ).player.order
-              rooms[roomNum]['linkedIndex'] += 1
-            }
-            if (linkedIndex === activeHands.size()) {
-              while (dealer.total < 17) {
-                const dealerCards = deal(deck)
-                dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
-                dealer.total += deck[dealerCards.deck][dealerCards.card].value
-                io.to(roomNum).emit('dealtDealer', dealer)
-              }
-              let playerId = players[socket.id]['userId']
-              let allPlayerSockets = Object.keys(players)
-              for (let x = 0; x < allPlayerSockets.length; x += 1) {
-                let allPlayerHands = Object.keys(
-                  players[allPlayerSockets[x]]['hand']
-                )
-                for (let y = 0; y < allPlayerHands.length; y += 1) {
-                  let myTotal =
-                    players[allPlayerSockets[x]]['hand'][allPlayerHands[y]][
-                      'total'
-                    ]
-                  let betSize =
-                    players[allPlayerSockets[x]]['hand'][allPlayerHands[y]][
-                      'bet'
-                    ]
-                  //did not bust
-                  if (myTotal <= 21) {
-                    //dealer busts and player did not bust
-                    //player wins
-                    if (dealer.total > 21 || myTotal > dealer.total) {
-                      try {
-                        await axios.put('http://localhost:7070/win', {
-                          userId: playerId,
-                          amount: betSize
-                        })
-                      } catch (error) {
-                        console.log(error)
-                      }
-                    }
-                    //player lose
-                    if (myTotal < dealer.total) {
-                      try {
-                        await axios.put('http://localhost:7070/win', {
-                          userId: playerId,
-                          amount: -betSize
-                        })
-                      } catch (error) {
-                        console.log(error)
-                      }
-                    }
-                  }
-                  //player bust
-                  else {
-                    try {
-                      await axios.put('http://localhost:7070/win', {
-                        userId: playerId,
-                        amount: -betSize
-                      })
-                    } catch (error) {
-                      console.log(error)
-                    }
-                  }
-                }
-              }
-              rooms[roomNum]['linkedIndex'] += 2
-            }
-            io.to(roomNum).emit('index', rooms[roomNum].order)
-            //
+            io.to(socketId).emit('hitStand', {roomNum, socketId})
           }
         }
       }
@@ -280,10 +225,15 @@ module.exports = io => {
             ).player.order
             rooms[roomNum]['linkedIndex'] += 1
             endTime()
+            countDownTimerStop()
+            rooms[roomNum]['timer'] = 10
+            countDownTimerStart(roomNum)
             startTime(roomNum, socketId)
+
           }
           if (linkedIndex === activeHands.size()) {
             endTime()
+            countDownTimerStop()
             while (dealer.total < 17) {
               const dealerCards = deal(deck)
               dealer.hand.push(deck[dealerCards.deck][dealerCards.card])
@@ -384,6 +334,8 @@ module.exports = io => {
         rooms[roomNum]['activeHands'] = new LinkedHand()
         rooms[roomNum]['trigger'] = false
         rooms[roomNum]['autoKick'] = []
+        rooms[roomNum]['timer'] = 10
+        io.to(roomNum).emit('startTimer', rooms[roomNum]['timer'])
         io.to(roomNum).emit('dealtDealer', dealer)
         io.to(roomNum).emit('dealtTrigger', rooms[roomNum]['trigger'])
         io.to(roomNum).emit('updateChips')
@@ -419,6 +371,7 @@ module.exports = io => {
         dealer: rooms[roomNum]['dealer'],
         table: table
       }
+      io.to(roomNum).emit('startTimer', rooms[roomNum]['timer'])
       io.to(roomNum).emit('updateUser', currentGame)
       io.to(roomNum).emit('index', rooms[roomNum].order)
     })
