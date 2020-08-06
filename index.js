@@ -9,7 +9,21 @@ app.use(bodyParser.json())
 // const Sequelize = require('sequelize');
 
 const cors = require('cors')
-app.use(cors())
+
+let prod = 'http://localhost:3000'
+
+if (process.env.PORT) {
+  prod = 'https://stackadon.herokuapp.com'
+}
+
+const corsOptions = {
+  origin: prod,
+  methods: 'GET,HEAD,POST,PATCH,DELETE,OPTIONS',
+  credentials: true, // required to pass
+  allowedHeaders: 'Content-Type, Authorization, X-Requested-With, Set-Cookie'
+}
+
+app.use(cors(corsOptions))
 const { User, sequelize } = require('./models/user')
 
 sequelize
@@ -20,6 +34,8 @@ sequelize
   .catch(err => {
     console.error('Unable to connect to the database:', err)
   })
+
+app.options('/', cors(corsOptions))
 
 User.sync({ force: true }).then(() => {
   // Now the `users` table in the database corresponds to the model definition
