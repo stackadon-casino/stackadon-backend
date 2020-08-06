@@ -2,7 +2,7 @@ const express = require('express')
 const socketio = require('socket.io')
 const http = require('http')
 const app = express()
-const PORT = 7070
+const PORT = process.env.PORT || 7070
 const bodyParser = require('body-parser')
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(bodyParser.json())
