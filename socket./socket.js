@@ -60,7 +60,6 @@ module.exports = io => {
   let rooms = {}
 
   io.on('connection', socket => {
-    console.log(`We are connected ${socket.id}`)
     // //assign player seats on a table
     socket.on('takeSeat', ({ ind, roomNum }) => {
       let players = rooms[roomNum].players
@@ -259,7 +258,7 @@ module.exports = io => {
                   //player wins
                   if (dealer.total > 21 || myTotal > dealer.total) {
                     try {
-                      await axios.put('http://localhost:7070/win', {
+                      await axios.put('https://stackadon-backend.herokuapp.com/win', {
                         userId: playerId,
                         amount: betSize
                       })
@@ -270,7 +269,7 @@ module.exports = io => {
                   //player lose
                   if (myTotal < dealer.total) {
                     try {
-                      await axios.put('http://localhost:7070/win', {
+                      await axios.put('https://stackadon-backend.herokuapp.com/win', {
                         userId: playerId,
                         amount: -betSize
                       })
@@ -282,7 +281,7 @@ module.exports = io => {
                 //player bust
                 else {
                   try {
-                    await axios.put('http://localhost:7070/win', {
+                    await axios.put('https://stackadon-backend.herokuapp.com/win', {
                       userId: playerId,
                       amount: -betSize
                     })
@@ -379,12 +378,10 @@ module.exports = io => {
     socket.on('clearSeat', ({ index, roomNum, socketId }) => {
       let activeHands = rooms[roomNum]['activeHands']
       let players = rooms[roomNum].players
-      console.log(index, roomNum, socketId, 'THREE THINGS')
       if (players[socketId]['hand'][index]['cards'].length > 0) {
         activeHands.removeAtIndex(index)
       }
       delete players[socketId]['hand'][index]
-      console.log(rooms[roomNum].players)
       io.to(roomNum).emit('removedPlayer', index)
     })
 

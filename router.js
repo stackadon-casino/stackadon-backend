@@ -5,8 +5,6 @@ const { User } = require('./models/user')
 
 router.get('/', async (req, res, next) => {
   const users = await User.findAll()
-
-  console.log(users)
   res.sendFile(__dirname + '/index.html')
 })
 
